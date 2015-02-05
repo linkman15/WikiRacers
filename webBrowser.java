@@ -13,7 +13,19 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.TextView;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.ParserConfigurationException;
 
+import org.w3c.dom.Document;
+import org.w3c.dom.NodeList;
+import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
+
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
 
 /////////////////////////////////////////////
 
@@ -24,6 +36,8 @@ import android.webkit.WebViewClient;
 public class webBrowser extends ActionBarActivity {
 
     private WebView mWebView;  //New Webview Element
+    private String webview_target_url; //Target for the player
+    //private TextView url_target; //Used to create target
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,11 +49,14 @@ public class webBrowser extends ActionBarActivity {
 
         //Links Activity Element to refrencable object
         mWebView = (WebView) findViewById(R.id.browser_webView_Window);
+
         //Sets internal JavaScript to ON
         mWebView.getSettings().setJavaScriptEnabled(true);
         //Sets Starting URL
         //mWebView.loadUrl("http://en.wikipedia.org/wiki/Main_Page");
-        mWebView.loadUrl("http://en.wikipedia.org/wiki/Special:Random");
+        mWebView.loadUrl("http://en.wikipedia.org/wiki/Special:Random"); //This is a placeholder
+        //Java Class to create a random start and end page
+        webview_target_url = random_target();
         mWebView.setWebViewClient(new mWebViewClient());
 
     }
@@ -81,8 +98,33 @@ public class webBrowser extends ActionBarActivity {
         }
     }
 
+    private String random_target(){
+        TextView url_target = (TextView) findViewById(R.id.browser_webView_Text); //Element for url text
+
+        String target_title = "This is a test";
+
+        try {
+            URL url = new URL("http://en.wikipedia.org/wiki/Special:Random");
+            DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+            DocumentBuilder db = dbf.newDocumentBuilder();
+            Document doc = db.parse(new InputSource(url.openStream()));
+
+            NodeList nodeList = doc.getElementsByTagName("item");
+
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        } catch (ParserConfigurationException e) {
+            e.printStackTrace();
+        } catch (SAXException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
 
+        url_target.setText("Target Page\n" + target_title); //Puts Title of target  into webview
+        return target_title;
+    }
 
 /////////////// JUNK I DON'T WANT TO REMOVE JUST YET////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -113,4 +155,8 @@ public class webBrowser extends ActionBarActivity {
     }
 
     */
+
+    public static class XMLconverter {
+
+    }
 }
