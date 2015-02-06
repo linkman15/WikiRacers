@@ -5,8 +5,11 @@
  * */
 package wikiracers.wikiracers;
 
+import android.graphics.Bitmap;
+import android.os.AsyncTask;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.KeyEvent;
 //import android.view.Menu;
 //import android.view.MenuItem;
@@ -14,18 +17,15 @@ import android.view.View;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.TextView;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.ParserConfigurationException;
 
-import org.w3c.dom.Document;
-import org.w3c.dom.NodeList;
-import org.xml.sax.InputSource;
-import org.xml.sax.SAXException;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.StringReader;
+import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.URLConnection;
 
 /////////////////////////////////////////////
 
@@ -37,6 +37,11 @@ public class webBrowser extends ActionBarActivity {
 
     private WebView mWebView;  //New Webview Element
     private String webview_target_url; //Target for the player
+    //private random_url title_grab = new random_url();
+    private String page_url; //Currently unused
+    private String curr_url; //Currently unused
+    private boolean have_target = false;
+    private TextView url_target; //Element for url text
     //private TextView url_target; //Used to create target
 
     @Override
@@ -44,7 +49,7 @@ public class webBrowser extends ActionBarActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_web_browser);
 
-
+        //title_grab.execute("http://en.wikipedia.org/wiki/Special:Random"); //Calls doInBackground for getting Random Page
 
 
         //Links Activity Element to refrencable object
@@ -52,18 +57,47 @@ public class webBrowser extends ActionBarActivity {
 
         //Sets internal JavaScript to ON
         mWebView.getSettings().setJavaScriptEnabled(true);
-        //Sets Starting URL
-        //mWebView.loadUrl("http://en.wikipedia.org/wiki/Main_Page");
-        mWebView.loadUrl("http://en.wikipedia.org/wiki/Special:Random"); //This is a placeholder
-        //Java Class to create a random start and end page
-        webview_target_url = random_target();
         mWebView.setWebViewClient(new mWebViewClient());
+
+        //mWebView.loadUrl("http://en.wikipedia.org/wiki/Main_Page");
+        //page_url = "http://en.wikipedia.org/wiki/Special:Random";
+
+        //mWebView.loadUrl("http://en.wikipedia.org/wiki/Special:Random"); //This is a placeholder
+        //page_url = mWebView.getUrl();
+        //Java Class to create a random start and end page
+        //webview_target_url = title_grab.random_target();
+
+        //
+        webview_target_url = "http://en.wikipedia.org/wiki/California_State_Route_67"; //Temporary for before random elements
+        String target_name = get_page_title(webview_target_url);
+        //Sets Starting URL
+        mWebView.loadUrl("http://en.wikipedia.org/wiki/Special:Random");
+        //mWebView.loadUrl("http://en.wikipedia.org/wiki/Main_Page"); //For testing purposes
+
+        url_target = (TextView) findViewById(R.id.browser_webView_Text);
+        url_target.setText("Target Page\n" + target_name); //Puts Title of target into webview
+
+
 
     }
 
 
+     public void onPageStarted(WebView view, String url, Bitmap favicon){
 
 
+         //Checks if use h
+         if(url.equals(webview_target_url)){
+             url_target = (TextView) findViewById(R.id.browser_webView_Text);
+             url_target.setText("You Win!");
+         }
+      }
+
+
+    public void onPageFinished(WebView view, String url){
+
+
+
+    }
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event)
@@ -98,38 +132,56 @@ public class webBrowser extends ActionBarActivity {
         }
     }
 
-    private String random_target(){
-        TextView url_target = (TextView) findViewById(R.id.browser_webView_Text); //Element for url text
+    public void get_current_page(){
+        page_url = mWebView.getUrl();
+        curr_url = get_page_title(page_url);
+    }
 
-        String target_title = "This is a test";
-
-        try {
-            URL url = new URL("http://en.wikipedia.org/wiki/Special:Random");
-            DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-            DocumentBuilder db = dbf.newDocumentBuilder();
-            Document doc = db.parse(new InputSource(url.openStream()));
-
-            NodeList nodeList = doc.getElementsByTagName("item");
-
-        } catch (MalformedURLException e) {
-            e.printStackTrace();
-        } catch (ParserConfigurationException e) {
-            e.printStackTrace();
-        } catch (SAXException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-
-        url_target.setText("Target Page\n" + target_title); //Puts Title of target  into webview
-        return target_title;
+    public String get_page_title(String url){
+        //Gets everything after the final / in the Url aka the page_title
+        int get_last_slash = url.lastIndexOf('/');
+        String page_title = url.substring(get_last_slash+1);
+        return page_title;
     }
 
 /////////////// JUNK I DON'T WANT TO REMOVE JUST YET////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
+    //Code meant to get random URL currently having
+    public class random_url extends AsyncTask<String, String, String> {
+        @Override
+        //public String random_target(){
+        protected String doInBackground(String... urls) {
+
+            String target_title = "This is a test";
+            //String target_title;
+
+            try {
+                URL url = new URL(urls[0]);
+
+                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
 
 
+                url = new URL (connection.getHeaderField("Location"));
+
+
+
+                target_title = url.toString();
+
+            } catch (MalformedURLException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            page_url = target_title;
+
+            return target_title;
+        }
+        @Override
+        protected void onPostExecute(String result) {
+            curr_url = result;
+        }
+    }
 
 /*
     @Override
@@ -156,7 +208,4 @@ public class webBrowser extends ActionBarActivity {
 
     */
 
-    public static class XMLconverter {
-
-    }
 }
