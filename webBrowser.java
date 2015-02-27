@@ -5,137 +5,164 @@
  * */
 package wikiracers.wikiracers;
 
+import android.app.Activity;
 import android.graphics.Bitmap;
-import android.os.AsyncTask;
-import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
-import android.util.Log;
-import android.view.KeyEvent;
 //import android.view.Menu;
 //import android.view.MenuItem;
+import android.util.Log;
 import android.view.View;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import java.util.ArrayList;
+import java.util.List;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.StringReader;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.net.URLConnection;
 
 /////////////////////////////////////////////
-
+//test with git
 
 
 //webBrowser class
 
-public class webBrowser extends ActionBarActivity {
+public class webBrowser extends Activity {
 
     private WebView mWebView;  //New Webview Element
-    private String webview_target_url; //Target for the player
-    //private random_url title_grab = new random_url();
-    private String page_url; //Currently unused
-    private String curr_url; //Currently unused
-    private boolean have_target = false;
-    private TextView url_target; //Element for url text
-    //private TextView url_target; //Used to create target
-
+    static int pageCount = 0;
+    static String currentURL = "";
+    static String startingURL = "";
+    static String target_URL = "";
+    static String target_URL_full = "";
+    static List<String> list_URL = new ArrayList<String>();
+    static Boolean gameStart = false;
+    static Boolean gameRun = false; // might be the same as gameStart
+    static Boolean peekMode = false; // toggles when the user is playing or looking at target
+    static Boolean backSwitch = true; //acts as a switch for the back button (prevents spamming)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_web_browser);
-
-        //title_grab.execute("http://en.wikipedia.org/wiki/Special:Random"); //Calls doInBackground for getting Random Page
+        final TextView countText = (TextView) findViewById(R.id.textView2);
 
 
         //Links Activity Element to refrencable object
         mWebView = (WebView) findViewById(R.id.browser_webView_Window);
-
         //Sets internal JavaScript to ON
         mWebView.getSettings().setJavaScriptEnabled(true);
-        mWebView.setWebViewClient(new mWebViewClient());
-
-        //mWebView.loadUrl("http://en.wikipedia.org/wiki/Main_Page");
-        //page_url = "http://en.wikipedia.org/wiki/Special:Random";
-
-        //mWebView.loadUrl("http://en.wikipedia.org/wiki/Special:Random"); //This is a placeholder
-        //page_url = mWebView.getUrl();
-        //Java Class to create a random start and end page
-        //webview_target_url = title_grab.random_target();
-
-        //
-        webview_target_url = "http://en.wikipedia.org/wiki/California_State_Route_67"; //Temporary for before random elements
-        String target_name = get_page_title(webview_target_url);
+        mWebView.getSettings().setLoadsImagesAutomatically(false);
         //Sets Starting URL
         mWebView.loadUrl("http://en.wikipedia.org/wiki/Special:Random");
-        //mWebView.loadUrl("http://en.wikipedia.org/wiki/Main_Page"); //For testing purposes
+        mWebView.setWebViewClient(new mWebViewClient(){
 
-        url_target = (TextView) findViewById(R.id.browser_webView_Text);
-        url_target.setText("Target Page\n" + target_name); //Puts Title of target into webview
+            //counts when a page is loaded completely
+            //used instead of onPageStarted for counting reasons (redirections, etc.)
+            //TODO: make sure the startup doesn't start past 0
+            //TODO: make sure the count doesn't go up when page load fails
+            @Override
+            public void onPageFinished(WebView view, String url){
+                super.onPageFinished(view, url);
+                if(peekMode){
 
-
-
+                }
+                else{backSwitch = true;
+                if (!url.equals(currentURL)) {
+                    currentURL = url;
+                    remove_html_elements();
+                    if(gameRun) {
+                        pageCount++;
+                    }
+                    Log.d("game", url + " ~ " + String.valueOf(pageCount) + "target:" + target_URL + " start:" + startingURL);
+                    countText.setText(String.valueOf(pageCount));
+                    backSwitch = true;
+                    if (get_page_title(url).equals(target_URL)){
+                        list_URL.add(url);
+                        TextView url_target = (TextView) findViewById(R.id.browser_webView_Text);
+                        url_target.setText("Winner");
+                        int i = 0;
+                        for (;i<list_URL.size();++i){
+                            Log.d("victory", list_URL.get(i));
+                        }
+                        Log.d("path", "url: " + url);
+                        gameRun = gameStart = false; //allows player to browse around post game without messing with stats
+                    }
+                    if(startingURL.equals("") && !url.equals("http://en.m.wikipedia.org/wiki/Special:Random")){
+                        mWebView.loadUrl("http://en.m.wikipedia.org/wiki/Special:Random");
+                        startingURL = url;
+                    }
+                    else if(target_URL.equals("") && !url.equals("http://en.m.wikipedia.org/wiki/Special:Random")){
+                        TextView url_target;
+                        url_target = (TextView)findViewById(R.id.browser_webView_Text);
+                        url_target.setText(get_page_title(url));
+                        target_URL = get_page_title(url);
+                        target_URL_full = url;
+                        mWebView.loadUrl(startingURL);
+                        pageCount = 0;
+                        gameStart = gameRun = true;
+                    }else if (gameStart){
+                        //Todo: test this (play the game all the way through)
+                        list_URL.add(url);
+                    }
+                    }
+                }
+            }
+            @Override
+            public void onPageStarted(WebView view, String url, Bitmap favicon){
+                backSwitch = false; //to prevent cancelling a load
+                super.onPageStarted(view,url,favicon);
+                //remove_html_elements();
+            }
+        });
+        // Back button functionality
+        final Button webBack = (Button)findViewById(R.id.browser_webView_Back_Button);
+        final TextView targetPageText = (TextView)findViewById(R.id.browser_webView_Text);
+        View.OnClickListener listen = new View.OnClickListener(){
+            @Override
+            public void onClick(View view){
+                if (view == webBack){
+                    Log.d("game", "back clicked");
+                    if(backSwitch){Log.d("game","backswitch true");}
+                    if(mWebView.canGoBack()){Log.d("game","GoBack true");}
+                    if(mWebView.canGoBack() && backSwitch){
+                        Log.d("game", "going back");
+                        backSwitch = false;
+                        mWebView.goBack();
+                    }
+                }
+                else if (view == targetPageText){
+                    if(peekMode){
+                        peekMode = false;
+                        backSwitch = true;
+                        mWebView.goBack();
+                    }else {
+                        Log.d("game", "text clicked");
+                        peekMode = true;
+                        mWebView.loadUrl(target_URL_full);
+                    }
+                }
+            }
+        };
+        webBack.setOnClickListener(listen);
+        targetPageText.setOnClickListener(listen);
     }
-
-
-     public void onPageStarted(WebView view, String url, Bitmap favicon){
-
-
-         //Checks if use h
-         if(url.equals(webview_target_url)){
-             url_target = (TextView) findViewById(R.id.browser_webView_Text);
-             url_target.setText("You Win!");
-         }
-      }
-//
-
-    public void onPageFinished(WebView view, String url){
-
-
-
-    }
-
-    @Override
-    public boolean onKeyDown(int keyCode, KeyEvent event)
-    {
-        if ((keyCode == KeyEvent.KEYCODE_BACK) && mWebView.canGoBack())
-        {
-            mWebView.goBack();
-            return true;
-        }
-
-        return super.onKeyDown(keyCode, event);
-    }
-
-    public void webBackButton(View view) {
-
-
-
-
-    }
-
 
     //Removes Web Client default buttons and bounds the browser space to
     //our WebView activity.
 
     private class mWebViewClient extends WebViewClient {
-
         @Override
         public boolean shouldOverrideUrlLoading(WebView webview, String url)
         {
-            webview.loadUrl(url);
+            Log.d("game","override view loading");
+            if (!peekMode) {
+                webview.loadUrl(url);
+            }
             return true;
         }
     }
 
-    public void get_current_page(){
-        page_url = mWebView.getUrl();
-        curr_url = get_page_title(page_url);
-    }
 
     public String get_page_title(String url){
         //Gets everything after the final / in the Url aka the page_title
@@ -144,68 +171,38 @@ public class webBrowser extends ActionBarActivity {
         return page_title;
     }
 
-/////////////// JUNK I DON'T WANT TO REMOVE JUST YET////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-    //Code meant to get random URL currently having
-    public class random_url extends AsyncTask<String, String, String> {
-        @Override
-        //public String random_target(){
-        protected String doInBackground(String... urls) {
+    public void remove_html_elements(){
+        //Removes Search bar
+        mWebView.loadUrl("javascript:(function() { " + "document.getElementsByClassName('header')[0].style.display = 'none'; " + "})()");
+        //Removes last edit info
+        mWebView.loadUrl("javascript:(function() { " + "document.getElementsByClassName('last-modified-bar truncated-text')[0].style.display = 'none'; " + "})()");
+        //Removes Contents Box
+        mWebView.loadUrl("javascript:(function() { " + "document.getElementsByClassName('toc-mobile view-border-box')[0].style.display = 'none'; " + "})()");
 
-            String target_title = "This is a test";
-            //String target_title;
+        //mWebView.loadUrl("javascript:(function() { " + "document.getElementById('References').style.display = 'none'; " + "})()");
 
-            try {
-                URL url = new URL(urls[0]);
+        //Removes Images
+        mWebView.loadUrl("javascript:(function() { " + "var image = document.getElementsByClassName('image'); " +
+                "for (int i = 0; i<image.length; i++){image[i].style.display = 'none';" + "})()");
 
-                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        mWebView.loadUrl("javascript:(function() { " + "var sections = document.getElementsByClassName('section-heading collapsible-heading open-block');" +
+                "for (block in sections){" +
+                "string content= block.aria-controls;" +
+                "if (block.id == 'References' || block.id == 'Further reading' || block.id == 'External links'){" +
+                "content.style.display = 'none';" +
+                "}else{" +
+                "document.getElementById(content).aria-pressed = true;" +
+                "}" +
+                "}"  + "})()"
+        );
+        //Removes "Read in another language bar"
+        mWebView.loadUrl("javascript:(function() { " + "document.getElementById('page-secondary-actions').style.display = 'none';" + "})()");
+        //Removes footer at the bottom of the page
+        mWebView.loadUrl("javascript:(function() { " + "document.getElementById('footer').style.display = 'none';" + "})()");
+        //Removes the edit and watch page icons at the top of the page
+        mWebView.loadUrl("javascript:(function() { " + "document.getElementById('page-actions').style.display = 'none';" + "})()");
+        //Removes the edit icons throughout the page
+        mWebView.loadUrl("javascript:(function() { " + "document.getElementsByClassName('icon icon-edit-enabled edit-page icon-32px').style.display = 'none'; " + "})()");
 
-
-                url = new URL (connection.getHeaderField("Location"));
-
-
-
-                target_title = url.toString();
-
-            } catch (MalformedURLException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-            page_url = target_title;
-
-            return target_title;
-        }
-        @Override
-        protected void onPostExecute(String result) {
-            curr_url = result;
-        }
     }
-
-/*
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_web_browser, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
-        }
-
-        return super.onOptionsItemSelected(item);
-    }
-
-    */
-
 }
